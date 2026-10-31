@@ -1,0 +1,2349 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twin Towers Tactical Defense - Turbo-Prop Simulator Edition</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #030712;
+            font-family: 'Share Tech Mono', 'Inter', monospace;
+            color: #00ff66;
+            user-select: none;
+        }
+        /* CRT Scanline ve Hacker Efektleri */
+        .crt-scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+        /* Yüksek Netlikte HUD Göstergeleri */
+        .hud-text {
+            text-shadow: 0 0 5px rgba(0, 255, 102, 0.8);
+            font-size: 12px;
+            letter-spacing: 1.5px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .hud-alert {
+            text-shadow: 0 0 8px rgba(239, 68, 68, 0.9);
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Terminal Log Akış Animasyonu */
+        @keyframes scroll-log {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-50%); }
+        }
+        .log-stream {
+            animation: scroll-log 20s linear infinite;
+        }
+        /* Custom UI Buttons */
+        .btn-neon {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff66;
+            color: #00ff66;
+            text-shadow: 0 0 5px #00ff66;
+            box-shadow: 0 0 10px rgba(0, 255, 102, 0.3);
+            transition: all 0.2s ease;
+        }
+        .btn-neon:hover {
+            background: #00ff66;
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 102, 0.6);
+        }
+        .btn-neon-active {
+            background: #00ff66 !important;
+            color: #000 !important;
+            box-shadow: 0 0 25px rgba(0, 255, 102, 0.8) !important;
+        }
+    </style>
+</head>
+<body class="w-full h-full relative">
+
+<!-- CRT Efekt Süzgeci -->
+<div class="crt-scanlines"></div>
+
+<!-- ==============================================
+     1. GİRİŞ EKRANI (HACKER TERMINAL & DECRYPTION INTRO)
+     ============================================== -->
+<div id="hackerIntro" class="absolute inset-0 bg-black z-50 flex flex-col justify-center items-center p-4 md:p-6 overflow-y-auto">
+    
+    <!-- ARKA PLAN AKAN TERMİNAL KODLARI -->
+    <div class="absolute inset-0 overflow-hidden opacity-20 pointer-events-none z-0">
+        <div class="log-stream space-y-1 text-[10px] md:text-[11px] leading-4 text-green-500/80 p-4">
+            <p>> INITIATING AIRSPACE BYPASS PROTOCOL...</p>
+            <p>> CONNECTING TO SATELLITE COGNITIVE NETWORKS (USA_WEST_RADAR)...</p>
+            <p>> INTRUSION DETECTED // RETRYING ENCRYPTION EXPLOIT...</p>
+            <p>> SECURITY EXPLOIT INJECTED: SUCCESS</p>
+            <p>> COCKPIT HUD SYSTEMS OVERWRITTEN BY USER: JIM CARREY</p>
+            <p>> AUTOPILOT THREAD: STARTING UP ON PORT 9091...</p>
+            <p>> RADAR FREQUENCY ASSIGNED: 9.62 GHz (X-BAND)</p>
+            <p>> DEFENSE SYSTEM: PHALANX CIWS ARMED AT 100% CAPACITY</p>
+            <p>> JACK & ROSE COMMUNICATIONS STATUS: SYNCHRONIZED</p>
+            <p>> DIRECTIVE: PROTECT AMERICAN TWIN TOWERS AT ALL COSTS</p>
+            <p>> INCOMING KAMIKAZE AIRLINERS DETECTED AT COGNITIVE RANGE...</p>
+            <!-- Yinelenen Satırlar (Kesintisiz döngü için) -->
+            <p>> INITIATING AIRSPACE BYPASS PROTOCOL...</p>
+            <p>> CONNECTING TO SATELLITE COGNITIVE NETWORKS (USA_WEST_RADAR)...</p>
+            <p>> INTRUSION DETECTED // RETRYING ENCRYPTION EXPLOIT...</p>
+            <p>> SECURITY EXPLOIT INJECTED: SUCCESS</p>
+            <p>> COCKPIT HUD SYSTEMS OVERWRITTEN BY USER: JIM CARREY</p>
+            <p>> AUTOPILOT THREAD: STARTING UP ON PORT 9091...</p>
+        </div>
+    </div>
+
+    <!-- Üst Küçük Bilgi Şeridi -->
+    <div class="w-full max-w-2xl flex justify-between items-center border-b border-green-500/30 pb-2 mb-4 text-[10px] z-10">
+        <div>[SYS_STATUS: DECRYPTING AIR DEFENSE OVERRIDE]</div>
+        <div id="roomCodeText">IP: CONNECTING... // CO-OP MODE ACTIVE</div>
+    </div>
+
+    <!-- Sistem Durumu ve Hangar Başlatma Paneli (Z-10 Üstte Duracak) -->
+    <div class="max-w-2xl w-full bg-black/95 border-2 border-green-500 p-5 md:p-6 rounded-lg shadow-[0_0_30px_rgba(0,255,102,0.3)] z-10">
+        <h1 class="text-xl md:text-2xl text-center mb-4 tracking-widest text-green-400 font-bold">[TWIN-TWR CO-OP AIR DEFENSE]</h1>
+        
+        <!-- Şifre Çözme İlerleme Çubuğu -->
+        <div id="decryptionProgress" class="space-y-2 mb-4">
+            <div class="flex justify-between text-[11px] mb-1">
+                <span>[DECRYPTING SECURE_PROTOCOL_V4.BIN]</span>
+                <span id="pctVal">0%</span>
+            </div>
+            <div class="w-full h-3 bg-gray-900 border border-green-500/50 rounded overflow-hidden">
+                <div id="progressBar" class="w-0 h-full bg-green-500 transition-all duration-75"></div>
+            </div>
+        </div>
+
+        <!-- UÇAK SEÇİM GARAJI (HANGAR) - Resimsiz & Emojisiz, Yeni Özelleştirilmiş Kadro -->
+        <div id="hangarPanel" class="hidden space-y-4">
+            <p class="text-xs text-center text-green-400/80 mb-2 uppercase tracking-wider">// Hangar Menüsü: Savaş Jetini Seçin (Sanal Joystick & Ateş Aktif)</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <!-- Uçak 1: F-22 (Aynı kaldı) -->
+                <div onclick="selectJet('f22')" id="card-f22" class="border border-green-500/30 p-3 rounded bg-black cursor-pointer hover:border-green-400 transition-all">
+                    <div class="text-sm font-bold text-green-400">F-22 RAPTOR</div>
+                    <div class="text-[10px] text-gray-500 mt-1 uppercase">// Model: Stealth Fighter</div>
+                    <div class="mt-2 space-y-1 text-[11px]">
+                        <div class="flex justify-between"><span>Hız:</span><span class="text-green-400">Yüksek</span></div>
+                        <div class="flex justify-between"><span>Manevra:</span><span class="text-green-400">Dengeli</span></div>
+                        <div class="flex justify-between"><span>Silah Hızı:</span><span class="text-green-400">Seri</span></div>
+                    </div>
+                </div>
+
+                <!-- Uçak 2: A-10 Thunderbolt II (Yeni Farklı Uçak) -->
+                <div onclick="selectJet('a10')" id="card-a10" class="border border-green-500/30 p-3 rounded bg-black cursor-pointer hover:border-green-400 transition-all">
+                    <div class="text-sm font-bold text-green-400">A-10 WARTHOG</div>
+                    <div class="text-[10px] text-gray-500 mt-1 uppercase">// Model: Twin-Engine Tank Killer</div>
+                    <div class="mt-2 space-y-1 text-[11px]">
+                        <div class="flex justify-between"><span>Hız:</span><span class="text-green-400">Orta</span></div>
+                        <div class="flex justify-between"><span>Zırh Kapasitesi:</span><span class="text-green-400">Devasa</span></div>
+                        <div class="flex justify-between"><span>Kanat Düzeni:</span><span class="text-green-400">Düz Dik</span></div>
+                    </div>
+                </div>
+
+                <!-- Uçak 3: Su-47 Berkut (Yeni Farklı Uçak) -->
+                <div onclick="selectJet('su47')" id="card-su47" class="border border-green-500/30 p-3 rounded bg-black cursor-pointer hover:border-green-400 transition-all">
+                    <div class="text-sm font-bold text-green-400">SU-47 BERKUT</div>
+                    <div class="text-[10px] text-gray-500 mt-1 uppercase">// Model: Forward-Swept Wing</div>
+                    <div class="mt-2 space-y-1 text-[11px]">
+                        <div class="flex justify-between"><span>Tasarım:</span><span class="text-green-400">Fütüristik</span></div>
+                        <div class="flex justify-between"><span>Dönüş Hızı:</span><span class="text-green-400">İnanılmaz</span></div>
+                        <div class="flex justify-between"><span>Kanat Düzeni:</span><span class="text-green-400">Öne Açılı</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ASIL BAŞLATMA DÜĞMESİ -->
+            <button id="launchBtn" onclick="launchGame()" class="w-full py-3 mt-4 btn-neon text-sm font-bold tracking-widest uppercase rounded-lg">
+                [ SAVAŞI BAŞLAT // SYSTEM_INIT ]
+            </button>
+        </div>
+    </div>
+
+    <div class="text-center text-[10px] text-green-500/40 uppercase tracking-widest mt-4 z-10">
+        AMERICAN DEFENSE INTRUSION BYPASS // VERSION_3D_COOP_2026
+    </div>
+</div>
+
+<!-- ==============================================
+     2. OYUN İÇİ ARAYÜZÜ VE HUD PANELİ (NET & KESKİN)
+     ============================================== -->
+<div id="gameHud" class="hidden absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-4 md:p-6 text-green-400">
+    
+    <!-- Üst HUD Kontrol Çubuğu -->
+    <header class="w-full flex justify-between items-start pointer-events-auto">
+        <div class="bg-black/85 border border-green-500/30 px-3 py-2 rounded flex flex-col gap-1">
+            <div class="hud-text font-bold">PILOT: JIM CARREY [THE MASK]</div>
+            <div id="multiplayerList" class="text-[10px] text-yellow-400 font-mono mb-1 max-w-[280px] truncate">AKTİF PİLOTLAR: CONNECTING...</div>
+            <div class="flex gap-4 text-[11px] text-green-500/70">
+                <div>SOL KULE (JACK): <span id="jackState" class="text-green-400">100%</span></div>
+                <div>SAĞ KULE (ROSE): <span id="roseState" class="text-green-400">100%</span></div>
+                <div>KÖPRÜ SAĞLIK: <span id="bridgeHealthState" class="text-green-400">100%</span></div>
+            </div>
+        </div>
+
+        <!-- Başarıyla İniş Yapıldı Bildirim Şeridi -->
+        <div id="landingNotification" class="hidden bg-green-500/20 border-2 border-green-500 text-green-400 px-4 py-2 rounded-md font-bold tracking-widest text-sm animate-pulse shadow-[0_0_15px_rgba(0,255,102,0.4)]">
+            [ PİSTE BAŞARIYLA İNİŞ YAPILDI ]
+        </div>
+
+        <!-- Kamera, Otopilot, Saat ve Duraklatma Tuşları -->
+        <div class="flex flex-wrap gap-2 justify-end max-w-sm">
+            <!-- ANA MENÜYE DÖNME TUŞU -->
+            <button onclick="goToMainMenu()" class="px-3 py-1.5 rounded text-xs font-bold btn-neon flex items-center gap-1 border-red-500/80 text-red-400 hover:text-black hover:bg-red-500">
+                <span>MENÜ [M]</span>
+            </button>
+            <button onclick="togglePause()" class="px-3 py-1.5 rounded text-xs font-bold btn-neon flex items-center gap-1">
+                <span>DURDUR [P]</span>
+            </button>
+            <button id="autopilotToggle" onclick="toggleAutopilot()" class="px-3 py-1.5 rounded text-xs font-bold btn-neon">
+                OTOPİLOT [R]: PASİF
+            </button>
+            <button id="guidanceToggleBtn" onclick="toggleGuidance()" class="px-3 py-1.5 rounded text-xs font-bold btn-neon">
+                BOMBA TAKİP [G]: AÇIK
+            </button>
+            <button id="camToggleBtn" onclick="cycleCamera()" class="px-3 py-1.5 rounded text-xs font-bold btn-neon">
+                CAM: PLANE TOP
+            </button>
+            <button id="todToggleBtn" onclick="cycleTOD()" class="px-3 py-1.5 rounded text-xs font-bold btn-neon">
+                TOD: DAY
+            </button>
+        </div>
+    </header>
+
+    <!-- Yan HUD Göstergeleri (Hız & İrtifa Bandı) -->
+    <div class="w-full flex justify-between items-center my-auto px-4">
+        <!-- Hız Bandı -->
+        <div class="bg-black/60 border border-green-500/30 p-2 rounded text-left hidden md:block">
+            <div class="text-[10px] text-green-500/50">HIZ (IAS)</div>
+            <div id="speedHud" class="hud-text text-lg font-bold">340 KTS</div>
+        </div>
+
+        <!-- İrtifa Bandı -->
+        <div class="bg-black/60 border border-green-500/30 p-2 rounded text-right hidden md:block">
+            <div class="text-[10px] text-green-500/50">İRTİFA (ALT)</div>
+            <div id="altHud" class="hud-text text-lg font-bold">2.4K FT</div>
+        </div>
+    </div>
+
+    <!-- Alt Skor & Silah Durumu Barı -->
+    <footer class="w-full flex flex-col md:flex-row justify-between items-end gap-3 pointer-events-auto">
+        <!-- Taktiksel Radar Göstergesi -->
+        <div class="bg-black/85 border border-green-500/30 p-3 rounded flex items-center gap-3">
+            <canvas id="radarCanvas" width="80" height="80" class="border border-green-500/40 rounded-full"></canvas>
+            <div>
+                <div class="hud-text text-sm">CO-OP RADAR ACTIVE</div>
+                <div class="text-[10px] text-green-500/60">ALLIES CALIBRATING...</div>
+            </div>
+        </div>
+
+        <!-- İniş Takımı ve CIWS Toggles -->
+        <div class="flex gap-2">
+            <button id="gearToggleBtn" onclick="toggleLandingGear()" class="px-3 py-2 bg-black/80 border border-green-500/40 text-[11px] rounded text-green-400 font-bold">
+                GEAR: EXTENDED
+            </button>
+            <button id="ciwsToggleBtn" onclick="toggleCIWS()" class="px-3 py-2 bg-black/80 border border-green-500/40 text-[11px] rounded text-green-400 font-bold">
+                CIWS (JACK&ROSE): FIRE
+            </button>
+        </div>
+
+        <!-- Turboprop İbreli Altimetre Kadranı -->
+        <div class="bg-black/85 border border-green-500/30 p-2 rounded flex flex-col items-center">
+            <canvas id="altimeterCanvas" width="70" height="70" class="rounded-full"></canvas>
+            <span class="text-[9px] text-green-500/60 mt-1">ALTIMETER</span>
+        </div>
+
+        <!-- Skor & Enerji -->
+        <div class="flex gap-4">
+            <div class="bg-black/85 border border-green-500/30 px-4 py-2 rounded text-center">
+                <span class="text-[10px] text-green-500/50 block">ORTAK SKOR</span>
+                <span id="scoreVal" class="hud-text text-xl font-bold">00000</span>
+            </div>
+            <div class="bg-black/85 border border-green-500/30 px-4 py-2 rounded text-center">
+                <span class="text-[10px] text-green-500/50 block">EN YÜKSEK</span>
+                <span id="highScoreVal" class="hud-text text-xl font-bold">00000</span>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<!-- ==============================================
+     3. DURAKLATMA (PAUSE) EKRANI OVERLAY
+     ============================================== -->
+<div id="pauseOverlay" class="hidden absolute inset-0 bg-black/80 z-40 flex flex-col items-center justify-center text-center">
+    <div class="border-2 border-green-500 p-8 rounded bg-black max-w-md shadow-[0_0_30px_rgba(0,255,102,0.4)] space-y-3">
+        <h2 class="text-3xl font-bold text-green-400 mb-2 animate-pulse">[ SİSTEM DURAKLATILDI ]</h2>
+        <p class="text-xs text-green-500/70 mb-4 uppercase">// Taktiksel Veri Analizi Beklemede...</p>
+        <button onclick="togglePause()" class="w-full py-2.5 btn-neon font-bold tracking-widest uppercase">
+            [ OYUNA DEVAM ET ]
+        </button>
+        <!-- PAUSE MENÜ ANA MENÜ BUTONU -->
+        <button onclick="goToMainMenu()" class="w-full py-2.5 btn-neon font-bold tracking-widest uppercase border-red-500 text-red-400 hover:bg-red-500 hover:text-black">
+            [ ANA MENÜYE DÖN ]
+        </button>
+    </div>
+</div>
+
+<!-- ==============================================
+     4. GAME OVER (OYUN BİTTİ) EKRANI OVERLAY
+     ============================================== -->
+<div id="gameOverOverlay" class="hidden absolute inset-0 bg-black/95 z-40 flex flex-col items-center justify-center text-center p-6">
+    <div class="border-2 border-red-500 p-8 rounded bg-black max-w-md shadow-[0_0_30px_rgba(239,68,68,0.4)] space-y-4">
+        <h2 class="text-3xl font-bold text-red-500 animate-bounce">[ KULELER YIKILDI // GÖREV BAŞARISIZ ]</h2>
+        <p id="failReason" class="text-xs text-gray-400 leading-relaxed uppercase"></p>
+        
+        <div class="bg-gray-950 border border-red-500/30 p-4 rounded text-left space-y-1 text-sm">
+            <div class="flex justify-between"><span>Düşman Kayıpları:</span><span id="finalKills" class="text-red-400 font-bold">0</span></div>
+            <div class="flex justify-between"><span>Toplam Ortak Skor:</span><span id="finalScore" class="text-green-400 font-bold">0</span></div>
+        </div>
+
+        <button onclick="restartGame()" class="w-full py-3 bg-red-600 hover:bg-red-500 text-black font-extrabold rounded shadow-lg uppercase tracking-wider transition-transform active:scale-95 text-xs">
+            [ SİSTEMİ YENİDEN BAŞLAT ]
+        </button>
+        <!-- GAME OVER ANA MENÜ BUTONU -->
+        <button onclick="goToMainMenu()" class="w-full py-2 btn-neon font-bold tracking-widest uppercase text-xs">
+            [ ANA MENÜYE DÖN ]
+        </button>
+    </div>
+</div>
+
+<!-- ==============================================
+     4. GAME OVER (OYUN BİTTİ) EKRANI OVERLAY
+     ============================================== -->
+<div id="gameOverOverlay" class="hidden absolute inset-0 bg-black/95 z-40 flex flex-col items-center justify-center text-center p-6">
+    <div class="border-2 border-red-500 p-8 rounded bg-black max-w-md shadow-[0_0_30px_rgba(239,68,68,0.4)] space-y-4">
+        <h2 class="text-3xl font-bold text-red-500 animate-bounce">[ KULELER YIKILDI // GÖREV BAŞARISIZ ]</h2>
+        <p id="failReason" class="text-xs text-gray-400 leading-relaxed uppercase"></p>
+        
+        <div class="bg-gray-950 border border-red-500/30 p-4 rounded text-left space-y-1 text-sm">
+            <div class="flex justify-between"><span>Düşman Kayıpları:</span><span id="finalKills" class="text-red-400 font-bold">0</span></div>
+            <div class="flex justify-between"><span>Toplam Ortak Skor:</span><span id="finalScore" class="text-green-400 font-bold">0</span></div>
+        </div>
+
+        <button onclick="restartGame()" class="w-full py-3 bg-red-600 hover:bg-red-500 text-black font-extrabold rounded shadow-lg uppercase tracking-wider transition-transform active:scale-95 text-xs">
+            [ SİSTEMİ YENİDEN BAŞLAT ]
+        </button>
+    </div>
+</div>
+
+<!-- ==============================================
+     5. MOBİL & DOKUNMATİK KONTROLLER (JOYSTICK VE ATEŞ BUTONU - HER ZAMAN AKTİF VE KULLANILABİLİR)
+     ============================================== -->
+<div id="mobileControls" class="absolute inset-0 z-30 pointer-events-none select-none">
+    <!-- Sol Kısım: Dokunmatik / Mouse Analog Joystick Alanı -->
+    <div id="joystickContainer" class="absolute bottom-6 left-6 w-32 h-32 bg-black/50 border-2 border-green-500/30 rounded-full flex items-center justify-center pointer-events-auto shadow-[0_0_15px_rgba(0,255,102,0.15)]">
+        <!-- Joystick Ortasındaki Hareketli Top -->
+        <div id="joystickKnob" class="w-12 h-12 bg-green-500 rounded-full shadow-[0_0_20px_rgba(0,255,102,0.8)] border border-green-300"></div>
+    </div>
+    
+    <!-- Sağ Kısım: Devasa Dokunmatik / Mouse Ateş Butonu -->
+    <button id="btnMobileFire" class="absolute bottom-8 right-8 w-24 h-24 bg-red-600/35 border-2 border-red-500 active:bg-red-500 active:scale-95 rounded-full flex items-center justify-center pointer-events-auto shadow-[0_0_25px_rgba(239,68,68,0.6)] transition-all">
+        <span class="text-white font-black text-sm tracking-widest text-shadow-[0_0_5px_#fff]">ATEŞ</span>
+    </button>
+</div>
+
+<!-- 3D Canvas için kapsayıcı alan -->
+<canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+<!-- ==============================================
+     SES SENTEZLEYİCİSİ (WEB AUDIO API)
+     ============================================== -->
+<script>
+    class SoundEngine {
+        constructor() {
+            this.ctx = null;
+            this.jetNoise = null;
+            this.jetGain = null;
+            this.lastSpeechTime = 0;
+        }
+        init() {
+            if (!this.ctx) {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.startJetHum();
+            }
+        }
+        startJetHum() {
+            if (!this.ctx) return;
+            const bufferSize = 2 * this.ctx.sampleRate;
+            const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+            const whiteNoise = this.ctx.createBufferSource();
+            whiteNoise.buffer = noiseBuffer;
+            whiteNoise.loop = true;
+
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 180;
+
+            this.jetGain = this.ctx.createGain();
+            this.jetGain.gain.setValueAtTime(0.02, this.ctx.currentTime);
+
+            whiteNoise.connect(filter);
+            filter.connect(this.jetGain);
+            this.jetGain.connect(this.ctx.destination);
+            whiteNoise.start();
+            this.jetNoise = whiteNoise;
+        }
+        setJetPitch(speedRatio) {
+            if (this.jetGain) {
+                this.jetGain.gain.setValueAtTime(0.02 + speedRatio * 0.03, this.ctx.currentTime);
+            }
+        }
+        playMissileLaunch() {
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.3);
+        }
+        playExplosion() {
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(10, this.ctx.currentTime + 0.5);
+            gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.5);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.5);
+        }
+        playPullUpWarning() {
+            if (!this.ctx) return;
+            // Çift tonlu havacılık siren sesi
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.type = 'sawtooth';
+            
+            // Sireni tizleştirme efekti
+            osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+            osc.frequency.linearRampToValueAtTime(750, this.ctx.currentTime + 0.15);
+            osc.frequency.linearRampToValueAtTime(320, this.ctx.currentTime + 0.3);
+            osc.frequency.linearRampToValueAtTime(750, this.ctx.currentTime + 0.45);
+            
+            gain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.12, this.ctx.currentTime + 0.05);
+            gain.gain.linearRampToValueAtTime(0.12, this.ctx.currentTime + 0.4);
+            gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.5);
+            
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.5);
+        }
+        speakPullUp() {
+            const now = Date.now();
+            // Aynı anda seslerin üst üste binerek kasmaması için 1.5 saniye aralık sınırı
+            if (now - this.lastSpeechTime < 1400) return;
+            this.lastSpeechTime = now;
+
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Önceki ses sırasını temizle
+                const speech = new SpeechSynthesisUtterance("PULL UP! PULL UP!");
+                speech.lang = "en-US";
+                speech.rate = 1.3; // Hızlı ve panik tonlama
+                speech.pitch = 0.65; // Mekanik/kalın kokpit uyarı sesi tonu
+                speech.volume = 1.0;
+                window.speechSynthesis.speak(speech);
+            }
+        }
+    }
+    const audio = new SoundEngine();
+</script>
+
+<!-- ==============================================
+     FIRESTORE GERÇEK ZAMANLI CO-OP ALTYAPISI
+     ============================================== -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Global Multiplayer Değişkenleri
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+    
+    window.db = null;
+    window.auth = null;
+    window.userId = null;
+    window.multiplayerActive = false;
+    window.remotePlayers = {}; // Diğer oyuncuların uçak modelleri ve verileri
+    window.lastFirebaseWrite = 0;
+    window.localBulletFiredTimestamp = 0;
+
+    async function initMultiplayerAltyapisi() {
+        if (!firebaseConfig) {
+            console.log("Firebase config not available. Running in single-player sandbox.");
+            document.getElementById('roomCodeText').innerText = "SINGLE-PLAYER SANDBOX";
+            return;
+        }
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            window.db = getFirestore(app);
+            window.auth = getAuth(app);
+
+            const customToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+            if (customToken) {
+                await signInWithCustomToken(window.auth, customToken);
+            } else {
+                await signInAnonymously(window.auth);
+            }
+
+            window.userId = window.auth.currentUser?.uid || crypto.randomUUID();
+            window.multiplayerActive = true;
+            document.getElementById('roomCodeText').innerText = `PILOT ID: ${window.userId}`;
+
+            setupFirestoreListeners();
+        } catch (e) {
+            console.error("Firebase connection error: ", e);
+            document.getElementById('roomCodeText').innerText = "OFFLINE CO-OP SANDBOX";
+        }
+    }
+
+    function setupFirestoreListeners() {
+        if (!window.db) return;
+
+        const playersCol = collection(window.db, 'artifacts', appId, 'public', 'data', 'players');
+        
+        onSnapshot(playersCol, (snapshot) => {
+            let activePilots = [window.userId];
+            snapshot.forEach((doc) => {
+                const pId = doc.id;
+                if (pId === window.userId) return; 
+                
+                const data = doc.data();
+                
+                if (Date.now() - data.lastActive > 6000) {
+                    removeRemotePlayer(pId);
+                    return;
+                }
+
+                activePilots.push(pId);
+                updateRemotePlayerState(pId, data);
+            });
+
+            const listEl = document.getElementById('multiplayerList');
+            if (listEl) {
+                listEl.innerText = `AKTİF PİLOTLAR: ${activePilots.join(" | ")}`;
+            }
+        }, (err) => {
+            console.error("Multiplayer listen error: ", err);
+        });
+
+        const gameStateDoc = doc(window.db, 'artifacts', appId, 'public', 'data', 'gameState', 'main');
+        onSnapshot(gameStateDoc, (snap) => {
+            if (snap.exists()) {
+                const d = snap.data();
+                if (d.score !== undefined && d.score !== window.score) {
+                    window.score = d.score;
+                    document.getElementById('scoreVal').innerText = String(window.score).padStart(5, '0');
+                }
+                if (d.kills !== undefined) {
+                    window.kills = d.kills;
+                }
+                if (d.bridgeHealth !== undefined && d.bridgeHealth !== window.bridgeHealth) {
+                    window.bridgeHealth = d.bridgeHealth;
+                    document.getElementById('bridgeHealthState').innerText = window.bridgeHealth + '%';
+                    if (window.bridgeHealth <= 0) {
+                        if (window.bridge) window.bridge.visible = false;
+                        if (window.healthBlock) window.healthBlock.visible = false;
+                    }
+                }
+            }
+        }, (err) => console.log(err));
+    }
+
+    window.writeMyStateToCloud = function() {
+        if (!window.multiplayerActive || !window.db || !window.userId || !window.flight) return;
+        const now = Date.now();
+        if (now - window.lastFirebaseWrite < 100) return; 
+        window.lastFirebaseWrite = now;
+
+        const playerDoc = doc(window.db, 'artifacts', appId, 'public', 'data', 'players', window.userId);
+        setDoc(playerDoc, {
+            x: window.flight.x,
+            y: window.flight.y,
+            z: window.flight.z,
+            yaw: window.flight.yaw,
+            pitch: window.flight.pitch,
+            roll: window.flight.roll,
+            jetType: window.selectedJetType,
+            isCrashing: window.flight.isCrashing,
+            bulletFired: window.localBulletFiredTimestamp,
+            lastActive: now
+        }, { merge: true }).catch(e => console.log(e));
+    };
+
+    window.updateCloudGameState = function(updates) {
+        if (!window.multiplayerActive || !window.db) return;
+        const gameStateDoc = doc(window.db, 'artifacts', appId, 'public', 'data', 'gameState', 'main');
+        setDoc(gameStateDoc, updates, { merge: true }).catch(e => console.log(e));
+    };
+
+    const oldOnload = window.onload;
+    window.onload = function() {
+        if (oldOnload) oldOnload();
+        initMultiplayerAltyapisi();
+    };
+</script>
+
+<!-- ==============================================
+     ANA OYUN MOTORU VE THREE.JS INTEGRASYONU
+     ============================================== -->
+<script>
+    let selectedJetType = 'f22';
+    let gameActive = false;
+    let isPaused = false;
+    let score = 0;
+    let kills = 0;
+    let highScore = parseInt(localStorage.getItem('ttd_highScore') || '0');
+    document.getElementById('highScoreVal').innerText = String(highScore).padStart(5, '0');
+
+    // 3D Three.js Nesneleri
+    let scene, camera, renderer;
+    let towerLeft, towerRight;
+    let bridge, healthBlock;
+    let playerJet;
+    let groundPlane; 
+    let waterLakes = []; 
+    let runway;
+    let lights = [];
+    let guideArrow; 
+
+    // Oynanış Listeleri
+    let enemies = []; 
+    let bullets = [];
+    let particles = [];
+    let islands = []; 
+    let groundUnits = []; 
+
+    // Uçuş Parametreleri
+    const flight = {
+        x: 0,
+        y: 8,
+        z: 25,
+        yaw: Math.PI,
+        pitch: 0,
+        roll: 0,
+        speed: 0.28,
+        maxSpeed: 0.65,
+        turnSpeed: 0.055,
+        targetYaw: Math.PI,
+        targetPitch: 0,
+        gearExtended: true,
+        gearAnimationVal: 1.0, 
+        isGrounded: false,
+        health: 100,
+        isCrashing: false
+    };
+
+    let bridgeHealth = 100;
+    let ciwsActive = true;
+
+    window.flight = flight;
+    Object.defineProperty(window, 'selectedJetType', { 
+        get: () => selectedJetType,
+        set: (v) => { selectedJetType = v; }
+    });
+    Object.defineProperty(window, 'score', { 
+        get: () => score,
+        set: (v) => { score = v; document.getElementById('scoreVal').innerText = String(v).padStart(5, '0'); }
+    });
+    Object.defineProperty(window, 'kills', { 
+        get: () => kills,
+        set: (v) => { kills = v; }
+    });
+    Object.defineProperty(window, 'bridgeHealth', { 
+        get: () => bridgeHealth,
+        set: (v) => { bridgeHealth = v; }
+    });
+    Object.defineProperty(window, 'bridge', { 
+        get: () => bridge,
+        set: (v) => { bridge = v; }
+    });
+    Object.defineProperty(window, 'healthBlock', { 
+        get: () => healthBlock,
+        set: (v) => { healthBlock = v; }
+    });
+
+    let joystickX = 0;
+    let joystickY = 0;
+
+    let cameraMode = 'PLANE_TOP'; 
+    let isAutopilot = false;
+    let isTrackingEnabled = true; 
+    let fireCooldown = 0;
+    let spawnTimer = 0;
+    let timeOfDay = 'DAY'; 
+
+    let isDragging = false;
+    let prevMouseX = 0;
+    let prevMouseY = 0;
+    let orbitAngleX = Math.PI;
+    let orbitAngleY = 0.3;
+
+    const keys = { KeyW: false, KeyS: false, KeyA: false, KeyD: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false };
+
+    function initDecryption() {
+        let pct = 0;
+        const progressInterval = setInterval(() => {
+            pct += Math.floor(Math.random() * 8) + 4; 
+            if (pct >= 100) {
+                pct = 100;
+                clearInterval(progressInterval);
+                document.getElementById('decryptionProgress').classList.add('hidden');
+                document.getElementById('hangarPanel').classList.remove('hidden');
+                selectJet('f22'); 
+            }
+            document.getElementById('progressBar').style.width = pct + '%';
+            document.getElementById('pctVal').innerText = pct + '%';
+        }, 80);
+    }
+
+    function selectJet(type) {
+        selectedJetType = type;
+        const cards = ['f22', 'a10', 'su47'];
+        cards.forEach(c => {
+            const el = document.getElementById('card-' + c);
+            if (c === type) {
+                el.classList.add('border-green-400', 'bg-green-500/10');
+            } else {
+                el.classList.remove('border-green-400', 'bg-green-500/10');
+            }
+        });
+    }
+
+    function launchGame() {
+        document.getElementById('hackerIntro').classList.add('hidden');
+        document.getElementById('gameHud').classList.remove('hidden');
+
+        audio.init();
+        init3DScene();
+        initVirtualJoystick();
+        gameActive = true;
+        animate();
+    }
+
+    function togglePause() {
+        if (!gameActive) return;
+        isPaused = !isPaused;
+        const overlay = document.getElementById('pauseOverlay');
+        if (isPaused) {
+            overlay.classList.remove('hidden');
+        } else {
+            overlay.classList.add('hidden');
+        }
+    }
+
+    function toggleAutopilot() {
+        isAutopilot = !isAutopilot;
+        const btn = document.getElementById('autopilotToggle');
+        if (isAutopilot) {
+            btn.classList.add('btn-neon-active');
+            btn.innerText = "OTOPİLOT [R]: AKTİF";
+        } else {
+            btn.classList.remove('btn-neon-active');
+            btn.innerText = "OTOPİLOT [R]: PASİF";
+        }
+    }
+
+    function toggleGuidance() {
+        isTrackingEnabled = !isTrackingEnabled;
+        const btn = document.getElementById('guidanceToggleBtn');
+        if (isTrackingEnabled) {
+            btn.classList.remove('btn-neon-active');
+            btn.innerText = "BOMBA TAKİP [G]: AÇIK";
+        } else {
+            btn.classList.add('btn-neon-active');
+            btn.innerText = "BOMBA TAKİP [G]: PASİF";
+        }
+    }
+
+    function toggleLandingGear() {
+        flight.gearExtended = !flight.gearExtended;
+        const btn = document.getElementById('gearToggleBtn');
+        btn.innerText = flight.gearExtended ? "GEAR: EXTENDED" : "GEAR: RETRACTED";
+    }
+
+    function toggleCIWS() {
+        ciwsActive = !ciwsActive;
+        const btn = document.getElementById('ciwsToggleBtn');
+        btn.innerText = ciwsActive ? "CIWS (JACK&ROSE): FIRE" : "CIWS (JACK&ROSE): DISABLED";
+    }
+
+    function cycleTOD() {
+        const tods = ['DAY', 'SUNSET', 'NIGHT'];
+        let idx = tods.indexOf(timeOfDay);
+        timeOfDay = tods[(idx + 1) % tods.length];
+        document.getElementById('todToggleBtn').innerText = 'TOD: ' + timeOfDay;
+        updateSceneLighting();
+    }
+
+    function cycleCamera() {
+        const modes = ['PLANE_TOP', 'CHASE', 'ORBIT', 'TACTICAL', 'MISSILE'];
+        let idx = modes.indexOf(cameraMode);
+        cameraMode = modes[(idx + 1) % modes.length];
+        document.getElementById('camToggleBtn').innerText = 'CAM: ' + cameraMode.replace('_', ' ');
+    }
+
+    function init3DScene() {
+        const canvas = document.getElementById('gameCanvas');
+        scene = new THREE.Scene();
+
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: "high-performance" });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = false;
+
+        const ambient = new THREE.AmbientLight(0xffffff, 1.1); 
+        scene.add(ambient);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.4); 
+        dirLight.position.set(30, 80, 40);
+        scene.add(dirLight);
+        lights.push(dirLight);
+
+        // Her Yer Toprak Zemin
+        const groundGeo = new THREE.PlaneGeometry(3000, 3000, 48, 48);
+        const groundMat = new THREE.MeshLambertMaterial({ color: 0x2e3f28, flatShading: true }); 
+        groundPlane = new THREE.Mesh(groundGeo, groundMat);
+        groundPlane.rotation.x = -Math.PI / 2;
+        groundPlane.position.y = -11;
+        scene.add(groundPlane);
+
+        // Belirli Yerlerdeki Göller / Su Birikintileri
+        const lakePositions = [
+            { x: -180, z: -200, r: 80 },
+            { x: -250, z: 150, r: 120 },
+            { x: 280, z: 250, r: 100 },
+            { x: 50, z: -450, r: 90 },
+            { x: -350, z: -400, r: 140 }
+        ];
+
+        const lakeMat = new THREE.MeshLambertMaterial({ color: 0x0f2a4a, flatShading: true }); 
+        lakePositions.forEach(pos => {
+            const lakeGeo = new THREE.CircleGeometry(pos.r, 16);
+            const lake = new THREE.Mesh(lakeGeo, lakeMat);
+            lake.rotation.x = -Math.PI / 2;
+            lake.position.set(pos.x, -10.95, pos.z);
+            scene.add(lake);
+            waterLakes.push(lake);
+        });
+
+        buildIslands();
+        buildRunway();
+
+        // Kuleler
+        const towerGeo = new THREE.BoxGeometry(4.5, 40, 4.5);
+        const towerMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+
+        towerLeft = new THREE.Mesh(towerGeo, towerMat);
+        towerLeft.position.set(-4, 9, 0);
+        scene.add(towerLeft);
+        buildTowerWindowsProcedural(towerLeft, -4);
+
+        towerRight = new THREE.Mesh(towerGeo, towerMat);
+        towerRight.position.set(4, 9, 0);
+        scene.add(towerRight);
+        buildTowerWindowsProcedural(towerRight, 4);
+
+        bridge = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 2.0), new THREE.MeshLambertMaterial({ color: 0x1e293b }));
+        bridge.position.set(0, 14, 0);
+        scene.add(bridge);
+
+        healthBlock = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), new THREE.MeshLambertMaterial({ color: 0xf8fafc }));
+        healthBlock.position.set(0, 15.3, 0);
+        scene.add(healthBlock);
+
+        const plusH = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.22, 0.22), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        plusH.position.set(0, 0, 0.71);
+        healthBlock.add(plusH);
+        const plusV = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.8, 0.22), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        plusV.position.set(0, 0, 0.71);
+        healthBlock.add(plusV);
+
+        buildTurretOnRoof(-4, 29.5, "JACK", 0x1d4ed8); 
+        buildTurretOnRoof(4, 29.5, "ROSE", 0xbe123c);   
+
+        buildGroundUnits();
+
+        // Seçilen Savaş Uçağı Yapısı
+        playerJet = new THREE.Group();
+        buildSelectedPlayerJetMesh(playerJet, selectedJetType);
+        scene.add(playerJet);
+
+        const arrowGeo = new THREE.ConeGeometry(0.6, 2.2, 5);
+        arrowGeo.rotateX(Math.PI / 2); 
+        guideArrow = new THREE.Mesh(arrowGeo, new THREE.MeshBasicMaterial({ color: 0x00ff66, depthTest: false, depthWrite: false }));
+        guideArrow.renderOrder = 9999;
+        guideArrow.visible = false;
+        scene.add(guideArrow);
+
+        updateSceneLighting();
+    }
+
+    function buildRunway() {
+        const runwayGroup = new THREE.Group();
+        runwayGroup.position.set(120, -10.85, -150);
+
+        const asphaltGeo = new THREE.PlaneGeometry(80, 500);
+        const asphalt = new THREE.Mesh(asphaltGeo, new THREE.MeshLambertMaterial({ color: 0x1e293b }));
+        asphalt.rotation.x = -Math.PI / 2;
+        runwayGroup.add(asphalt);
+
+        for (let z = -230; z <= 230; z += 40) {
+            const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2, 15), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+            stripe.rotation.x = -Math.PI / 2;
+            stripe.position.set(0, 0.05, z);
+            runwayGroup.add(stripe);
+        }
+
+        for (let z = -250; z <= 250; z += 100) {
+            const lampGeo = new THREE.SphereGeometry(0.8, 8, 8);
+            const lampMatRed = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+            const lampMatGreen = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+
+            const lampL = new THREE.Mesh(lampGeo, z < 0 ? lampMatGreen : lampMatRed);
+            lampL.position.set(-42, 0.5, z);
+            runwayGroup.add(lampL);
+
+            const lampR = new THREE.Mesh(lampGeo, z < 0 ? lampMatGreen : lampMatRed);
+            lampR.position.set(42, 0.5, z);
+            runwayGroup.add(lampR);
+        }
+
+        scene.add(runwayGroup);
+        runway = runwayGroup;
+    }
+
+    function buildIslands() {
+        const islandGeo = new THREE.ConeGeometry(30, 20, 5);
+        const islandMat = new THREE.MeshLambertMaterial({ color: 0x1f351f, flatShading: true }); 
+        for (let i = 0; i < 12; i++) {
+            const island = new THREE.Mesh(islandGeo, islandMat);
+            const ang = Math.random() * Math.PI * 2;
+            const dist = 180 + Math.random() * 400;
+            island.position.set(Math.cos(ang) * dist, -11, Math.sin(ang) * dist);
+            scene.add(island);
+            islands.push(island);
+        }
+    }
+
+    function buildTowerWindowsProcedural(parentTower, towerX) {
+        const winGeo = new THREE.BoxGeometry(0.1, 0.4, 0.2);
+        const winMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+        for (let y = -16; y < 18; y += 2) {
+            for (let side = -1.8; side <= 1.8; side += 1.2) {
+                const winFront = new THREE.Mesh(winGeo, winMat);
+                winFront.position.set(side, y, 2.3);
+                parentTower.add(winFront);
+                const winBack = new THREE.Mesh(winGeo, winMat);
+                winBack.position.set(side, y, -2.3);
+                parentTower.add(winBack);
+            }
+        }
+    }
+
+    function buildTurretOnRoof(x, y, charName, jacketColor) {
+        const turretGroup = new THREE.Group();
+        turretGroup.position.set(x, y, 0);
+
+        const base = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 1.2), new THREE.MeshLambertMaterial({ color: 0x334155 }));
+        turretGroup.add(base);
+
+        const barrelPivot = new THREE.Group();
+        barrelPivot.name = "barrelPivot";
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.2, 6), new THREE.MeshLambertMaterial({ color: 0x0f172a }));
+        barrel.rotation.x = Math.PI / 2;
+        barrel.position.z = 0.5;
+        barrelPivot.add(barrel);
+        turretGroup.add(barrelPivot);
+
+        const character = new THREE.Group();
+        character.position.set(charName === "JACK" ? -1.0 : 1.0, 0.4, 0);
+
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.4), new THREE.MeshLambertMaterial({ color: jacketColor }));
+        character.add(body);
+
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.35), new THREE.MeshLambertMaterial({ color: 0xfbcfe8 }));
+        head.position.y = 0.6;
+        character.add(head);
+
+        turretGroup.add(character);
+        scene.add(turretGroup);
+
+        if (charName === "JACK") {
+            towerLeft.userData.turret = turretGroup;
+        } else {
+            towerRight.userData.turret = turretGroup;
+        }
+    }
+
+    function buildGroundUnits() {
+        for (let i = 0; i < 4; i++) {
+            const unit = new THREE.Group();
+            const bodyMat = new THREE.MeshLambertMaterial({ color: 0x2d3748 });
+            
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 1.5), bodyMat);
+            unit.add(body);
+
+            const cab = new THREE.Mesh(new THREE.BoxGeometry(1, 1.2, 1.4), bodyMat);
+            cab.position.set(1.5, 0.2, 0);
+            unit.add(cab);
+
+            const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 8);
+            const wheelMat = new THREE.MeshLambertMaterial({ color: 0x1a202c });
+            [-1.2, 1.2].forEach(wx => {
+                [-0.8, 0.8].forEach(wz => {
+                    const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                    wheel.rotation.x = Math.PI / 2;
+                    wheel.position.set(wx, -0.6, wz);
+                    unit.add(wheel);
+                });
+            });
+
+            const radarPivot = new THREE.Group();
+            radarPivot.name = "radarPivot";
+            const dish = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.3), new THREE.MeshLambertMaterial({ color: 0x4a5568 }));
+            dish.position.set(0, 1.0, 0);
+            radarPivot.add(dish);
+            unit.add(radarPivot);
+
+            const angle = (i * Math.PI) / 2 + 0.4;
+            unit.position.set(Math.cos(angle) * 150, -10.5, Math.sin(angle) * 150);
+            scene.add(unit);
+            groundUnits.push({ mesh: unit, cooldown: 0 });
+        }
+    }
+
+    // ==============================================
+    // TÜM UÇAKLAR BAŞKA OLSUN - 3D JET TASARIM GRUBU
+    // ==============================================
+    function buildSelectedPlayerJetMesh(targetGroup, jetType) {
+        while(targetGroup.children.length > 0) {
+            targetGroup.remove(targetGroup.children[0]);
+        }
+
+        const bodyMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
+        const wingMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
+        const cockpitMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 });
+
+        // Ortak Kokpit Camı
+        const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), cockpitMat);
+        cockpit.position.set(0, 0.25, 0.4);
+        cockpit.scale.set(1, 1, 1.8);
+
+        if (jetType === 'f22') {
+            // 1. ILKI AYNI DURSUN: F-22 Raptor (swept-back wings, stealth twin-fin)
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.2, 2.4, 6), bodyMat);
+            body.rotation.x = Math.PI / 2;
+            targetGroup.add(body);
+            targetGroup.add(cockpit);
+
+            const wings = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.08, 1.0), wingMat);
+            wings.position.set(0, -0.05, -0.2);
+            targetGroup.add(wings);
+
+            const tailLeft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.6), wingMat);
+            tailLeft.position.set(-0.4, 0.4, -0.9);
+            tailLeft.rotation.z = -0.15;
+            targetGroup.add(tailLeft);
+
+            const tailRight = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.6), wingMat);
+            tailRight.position.set(0.4, 0.4, -0.9);
+            tailRight.rotation.z = 0.15;
+            targetGroup.add(tailRight);
+
+        } else if (jetType === 'a10') {
+            // 2. YENİ UÇAK: A-10 Thunderbolt II (Straight rectangular wings, high rear twin-engines, H-tail)
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.28, 2.8, 8), bodyMat);
+            body.rotation.x = Math.PI / 2;
+            targetGroup.add(body);
+            
+            cockpit.position.set(0, 0.28, 0.6);
+            targetGroup.add(cockpit);
+
+            // Düz Uzun Kanat (Straight Wings)
+            const wings = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.08, 0.9), wingMat);
+            wings.position.set(0, -0.05, 0.1);
+            targetGroup.add(wings);
+
+            // Arka Çift Motor Podları (High-mounted Rear Turbofan Engines)
+            const engineMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+            const engineLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.7, 8), engineMat);
+            engineLeft.rotation.x = Math.PI / 2;
+            engineLeft.position.set(-0.45, 0.35, -0.6);
+            targetGroup.add(engineLeft);
+
+            const engineRight = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.7, 8), engineMat);
+            engineRight.rotation.x = Math.PI / 2;
+            engineRight.position.set(0.45, 0.35, -0.6);
+            targetGroup.add(engineRight);
+
+            // Yatay Arka Kuyruk
+            const stabilizerH = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.06, 0.5), wingMat);
+            stabilizerH.position.set(0, 0.1, -1.1);
+            targetGroup.add(stabilizerH);
+
+            // H-Kuyruk Düzeni (Twin vertical endplate fins)
+            const finLeft = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.7, 0.4), wingMat);
+            finLeft.position.set(-0.9, 0.35, -1.1);
+            targetGroup.add(finLeft);
+
+            const finRight = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.7, 0.4), wingMat);
+            finRight.position.set(0.9, 0.35, -1.1);
+            targetGroup.add(finRight);
+
+        } else if (jetType === 'su47') {
+            // 3. YENİ UÇAK: Su-47 Berkut (Forward-swept wings, frontend canards, sleek aerodynamic profile)
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.15, 2.7, 6), bodyMat);
+            body.rotation.x = Math.PI / 2;
+            targetGroup.add(body);
+            targetGroup.add(cockpit);
+
+            // Öne Açılı Sol Kanat (Forward-Swept Left Wing)
+            const wingL = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.08, 0.65), wingMat);
+            wingL.position.set(-1.0, -0.05, 0.25);
+            wingL.rotation.y = -Math.PI / 8; // Öne doğru yatık
+            targetGroup.add(wingL);
+
+            // Öne Açılı Sağ Kanat (Forward-Swept Right Wing)
+            const wingR = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.08, 0.65), wingMat);
+            wingR.position.set(1.0, -0.05, 0.25);
+            wingR.rotation.y = Math.PI / 8; // Öne doğru yatık
+            targetGroup.add(wingR);
+
+            // Ön Canard Kanatçıkları (Sleek aerodynamic control surfaces)
+            const canards = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.04, 0.25), wingMat);
+            canards.position.set(0, 0.05, 0.8);
+            targetGroup.add(canards);
+
+            // İki Klasik Arka Fin
+            const tailLeft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.75, 0.5), wingMat);
+            tailLeft.position.set(-0.35, 0.35, -0.9);
+            tailLeft.rotation.z = -0.12;
+            targetGroup.add(tailLeft);
+
+            const tailRight = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.75, 0.5), wingMat);
+            tailRight.position.set(0.35, 0.35, -0.9);
+            tailRight.rotation.z = 0.12;
+            targetGroup.add(tailRight);
+        }
+
+        // Kanat Ucu Sinyal LED Işıkları
+        const redLed = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        redLed.position.set(-1.8, 0, -0.2);
+        targetGroup.add(redLed);
+
+        const greenLed = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), new THREE.MeshBasicMaterial({ color: 0x22c55e }));
+        greenLed.position.set(1.8, 0, -0.2);
+        targetGroup.add(greenLed);
+
+        // İNİŞ TAKIMLARI (Retractable Landing Gear - Tüm modellerde bulunur)
+        const gearGroup = new THREE.Group();
+        gearGroup.name = "landingGear";
+        
+        const strutGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.6, 6);
+        const wheelGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.1, 8);
+        const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111827 });
+
+        // Ön İniş Takımı
+        const frontStrut = new THREE.Mesh(strutGeo, wingMat);
+        frontStrut.position.set(0, -0.4, 0.6);
+        const frontWheel = new THREE.Mesh(wheelGeo, wheelMat);
+        frontWheel.rotation.x = Math.PI / 2;
+        frontWheel.position.set(0, -0.7, 0.6);
+        gearGroup.add(frontStrut);
+        gearGroup.add(frontWheel);
+
+        // Sol Arka İniş Takımı
+        const leftStrut = new THREE.Mesh(strutGeo, wingMat);
+        leftStrut.position.set(-0.6, -0.4, -0.4);
+        const leftWheel = new THREE.Mesh(wheelGeo, wheelMat);
+        leftWheel.rotation.x = Math.PI / 2;
+        leftWheel.position.set(-0.6, -0.7, -0.4);
+        gearGroup.add(leftStrut);
+        gearGroup.add(leftWheel);
+
+        // Sağ Arka İniş Takımı
+        const rightStrut = new THREE.Mesh(strutGeo, wingMat);
+        rightStrut.position.set(0.6, -0.4, -0.4);
+        const rightWheel = new THREE.Mesh(wheelGeo, wheelMat);
+        rightWheel.rotation.x = Math.PI / 2;
+        rightWheel.position.set(0.6, -0.7, -0.4);
+        gearGroup.add(rightStrut);
+        gearGroup.add(rightWheel);
+
+        targetGroup.add(gearGroup);
+    }
+
+    // Yolcu Uçağı Modeli
+    function buildEnemyAirlinerMesh() {
+        const airlinerGroup = new THREE.Group();
+        
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.45, 3.8, 10), new THREE.MeshLambertMaterial({ color: 0xf8fafc }));
+        body.rotation.x = Math.PI / 2;
+        airlinerGroup.add(body);
+        
+        const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.56, 8, 8, 0, Math.PI*2, 0, Math.PI/3), new THREE.MeshBasicMaterial({ color: 0x1e293b }));
+        cockpit.position.set(0, 0.15, 1.3);
+        cockpit.scale.set(1, 0.5, 0.8);
+        airlinerGroup.add(cockpit);
+
+        const wings = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.08, 1.4), new THREE.MeshLambertMaterial({ color: 0xd1d5db }));
+        wings.position.set(0, -0.15, -0.1);
+        airlinerGroup.add(wings);
+
+        const engineGeo = new THREE.CylinderGeometry(0.28, 0.22, 0.9, 8);
+        const engineMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+        
+        const leftEngine = new THREE.Mesh(engineGeo, engineMat);
+        leftEngine.rotation.x = Math.PI / 2;
+        leftEngine.position.set(-1.8, -0.45, 0.2);
+        airlinerGroup.add(leftEngine);
+
+        const rightEngine = new THREE.Mesh(engineGeo, engineMat);
+        rightEngine.rotation.x = Math.PI / 2;
+        rightEngine.position.set(1.8, -0.45, 0.2);
+        airlinerGroup.add(rightEngine);
+
+        const fin = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.4, 0.9), new THREE.MeshLambertMaterial({ color: 0x1d4ed8 }));
+        fin.position.set(0, 0.9, -1.5);
+        airlinerGroup.add(fin);
+
+        return airlinerGroup;
+    }
+
+    // Helikopter Modeli
+    function buildEnemyHelicopterMesh() {
+        const heloGroup = new THREE.Group();
+
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 3.2), new THREE.MeshLambertMaterial({ color: 0x27272a }));
+        heloGroup.add(body);
+
+        const tail = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 2.2), new THREE.MeshLambertMaterial({ color: 0x27272a }));
+        tail.position.set(0, 0.2, -2.0);
+        heloGroup.add(tail);
+
+        const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.48, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfabf2c }));
+        cockpit.position.set(0, 0.1, 1.6);
+        heloGroup.add(cockpit);
+
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6), new THREE.MeshLambertMaterial({ color: 0x27272a }));
+        hub.position.set(0, 0.7, 0);
+        heloGroup.add(hub);
+
+        const blades = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.04, 0.25), new THREE.MeshLambertMaterial({ color: 0x18181b }));
+        blades.name = "rotorBlades";
+        blades.position.set(0, 1.0, 0);
+        heloGroup.add(blades);
+
+        return heloGroup;
+    }
+
+    function updateSceneLighting() {
+        if (timeOfDay === 'DAY') {
+            scene.background = new THREE.Color(0xbfe3f7);
+            scene.fog = new THREE.FogExp2(0xbfe3f7, 0.003); 
+            renderer.setClearColor(0xbfe3f7, 1);
+            lights[0].intensity = 1.4; 
+            lights[0].color.setHex(0xffffff);
+        } else if (timeOfDay === 'SUNSET') {
+            scene.background = new THREE.Color(0x451a03);
+            scene.fog = new THREE.FogExp2(0x451a03, 0.012);
+            renderer.setClearColor(0x451a03, 1);
+            lights[0].intensity = 0.7;
+            lights[0].color.setHex(0xf97316);
+        } else {
+            scene.background = new THREE.Color(0x020617);
+            scene.fog = new THREE.FogExp2(0x020617, 0.012);
+            renderer.setClearColor(0x020617, 1);
+            lights[0].intensity = 0.2;
+            lights[0].color.setHex(0x3b82f6);
+        }
+    }
+</script>
+
+<!-- ==============================================
+     DİNAMİK FİZİK MOTORU VE TAKTİK OYNANIŞ
+     ============================================== -->
+<script>
+    function updateFlightPhysics() {
+        if (isPaused) return;
+
+        // ÇAKILMA MANTIĞI
+        if (flight.isCrashing) {
+            flight.pitch += 0.012; 
+            flight.roll += 0.08;   
+            flight.speed = Math.max(0.12, flight.speed - 0.002);
+
+            flight.x += Math.sin(flight.yaw) * flight.speed;
+            flight.y += Math.sin(flight.pitch) * flight.speed;
+            flight.z += Math.cos(flight.yaw) * flight.speed;
+
+            playerJet.position.set(flight.x, flight.y, flight.z);
+            playerJet.rotation.set(0, 0, 0);
+            playerJet.rotateY(flight.yaw);
+            playerJet.rotateX(-flight.pitch);
+            playerJet.rotateZ(flight.roll);
+
+            if (Math.random() < 0.8) {
+                spawnHeavySmoke(playerJet.position);
+            }
+
+            audio.playPullUpWarning();
+            audio.speakPullUp();
+
+            if (flight.y <= -11) {
+                triggerExplosion(playerJet.position);
+                triggerGameOver("Uçağın kontrolünü kaybederek toprağa çakıldın!");
+            }
+            
+            if (window.writeMyStateToCloud) window.writeMyStateToCloud();
+            return;
+        }
+
+        const gearGroup = playerJet.getObjectByName("landingGear");
+        if (gearGroup) {
+            const targetVal = flight.gearExtended ? 1.0 : 0.0;
+            flight.gearAnimationVal += (targetVal - flight.gearAnimationVal) * 0.1;
+            gearGroup.scale.set(1, flight.gearAnimationVal, 1);
+            gearGroup.visible = flight.gearAnimationVal > 0.05;
+        }
+
+        const inRunwayX = flight.x >= 80 && flight.x <= 160;
+        const inRunwayZ = flight.z >= -400 && flight.z <= 100;
+        const nearGround = flight.y <= -10.0;
+
+        const notifEl = document.getElementById('landingNotification');
+
+        if (inRunwayX && inRunwayZ && nearGround) {
+            if (flight.gearExtended) {
+                flight.isGrounded = true;
+                flight.y = -10.5; 
+                flight.pitch = 0;
+                flight.roll = 0;
+                flight.speed = Math.max(0, flight.speed - 0.005); 
+
+                if (notifEl) {
+                    notifEl.classList.remove('hidden');
+                }
+            } else {
+                triggerExplosion(playerJet.position);
+                triggerGameOver("İniş takımlarını açmadığın için piste gövde üstü çakılarak patladın!");
+                flight.isCrashing = true;
+                if (notifEl) notifEl.classList.add('hidden');
+            }
+        } else {
+            flight.isGrounded = false;
+            if (notifEl) {
+                notifEl.classList.add('hidden');
+            }
+        }
+
+        if (flight.isGrounded) {
+            let yawInput = 0;
+            if (keys.KeyA || keys.ArrowLeft) yawInput = 1;
+            if (keys.KeyD || keys.ArrowRight) yawInput = -1;
+            if (Math.abs(joystickX) > 0.05) yawInput = -joystickX;
+            flight.yaw += 0.02 * yawInput;
+
+            if (keys.KeyW || keys.ArrowUp || joystickY > 0.2) {
+                flight.speed = Math.min(flight.maxSpeed, flight.speed + 0.008);
+                if (flight.speed > 0.15) {
+                    flight.isGrounded = false; 
+                    flight.pitch = 0.1;
+                }
+            }
+
+            flight.x += Math.sin(flight.yaw) * flight.speed;
+            flight.z += Math.cos(flight.yaw) * flight.speed;
+        } else {
+            if (isAutopilot) {
+                let targetPos = new THREE.Vector3(0, 14, 0);
+                if (enemies.length > 0) {
+                    targetPos.copy(enemies[0].mesh.position);
+                }
+                const dx = targetPos.x - playerJet.position.x;
+                const dy = targetPos.y - playerJet.position.y;
+                const dz = targetPos.z - playerJet.position.z;
+                
+                flight.targetYaw = Math.atan2(dx, dz);
+                flight.targetPitch = Math.atan2(dy, Math.hypot(dx, dz));
+
+                const yawDiff = flight.targetYaw - flight.yaw;
+                flight.yaw += Math.sin(yawDiff) * 0.08; 
+                flight.pitch += (flight.targetPitch - flight.pitch) * 0.08;
+                flight.roll = Math.sin(yawDiff) * 1.4;
+            } else {
+                let yawInput = 0;
+                let pitchInput = 0;
+
+                if (keys.KeyA || keys.ArrowLeft) yawInput = 1;
+                if (keys.KeyD || keys.ArrowRight) yawInput = -1;
+                if (Math.abs(joystickX) > 0.05) yawInput = -joystickX;
+
+                if (keys.KeyW || keys.ArrowUp) pitchInput = 1;
+                if (keys.KeyS || keys.ArrowDown) pitchInput = -1;
+                if (Math.abs(joystickY) > 0.05) pitchInput = joystickY;
+
+                if (Math.abs(yawInput) > 0.05) {
+                    flight.yaw += flight.turnSpeed * yawInput;
+                    flight.roll = THREE.MathUtils.lerp(flight.roll, 0.9 * yawInput, 0.15);
+                } else {
+                    flight.roll = THREE.MathUtils.lerp(flight.roll, 0, 0.15);
+                }
+
+                if (Math.abs(pitchInput) > 0.05) {
+                    flight.pitch += 0.035 * pitchInput;
+                }
+            }
+
+            flight.pitch = Math.max(-1.2, Math.min(1.2, flight.pitch));
+
+            flight.x += Math.sin(flight.yaw) * Math.cos(flight.pitch) * flight.speed;
+            flight.y += Math.sin(flight.pitch) * flight.speed;
+            flight.z += Math.cos(flight.yaw) * Math.cos(flight.pitch) * flight.speed;
+
+            const altitudeAboveGround = flight.y - (-11); // Zemin -11 seviyesinde
+            // Yere 6 birimden (600 feet) yakınsak, burnumuz aşağı doğruysa ve piste inmeye çalışmıyorsak uyar
+            if (altitudeAboveGround < 6.0 && flight.pitch < -0.1 && !flight.isGrounded && !inRunwayX) {
+                audio.playPullUpWarning();
+                audio.speakPullUp();
+            }
+
+            if (flight.y <= -11.0) {
+                triggerExplosion(playerJet.position);
+                triggerGameOver("Yere çok fazla yaklaşarak toprağa çakıldın!");
+            }
+        }
+
+        playerJet.position.set(flight.x, flight.y, flight.z);
+        playerJet.rotation.set(0, 0, 0);
+        playerJet.rotateY(flight.yaw);
+        playerJet.rotateX(-flight.pitch);
+        playerJet.rotateZ(flight.roll);
+
+        if (Math.random() < 0.4) {
+            spawnExhaustSmoke(playerJet.position);
+        }
+
+        document.getElementById('speedHud').innerText = Math.round(flight.speed * 2000) + ' KTS';
+        document.getElementById('altHud').innerText = Math.round((flight.y + 11) * 100) + ' FT';
+
+        if (window.writeMyStateToCloud) window.writeMyStateToCloud();
+    }
+
+    function spawnExhaustSmoke(pos) {
+        const pGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+        const pMat = new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.6 });
+        const pMesh = new THREE.Mesh(pGeo, pMat);
+        pMesh.position.copy(pos).add(new THREE.Vector3((Math.random() - 0.5) * 0.4, -0.2, -1));
+        scene.add(pMesh);
+        particles.push({
+            mesh: pMesh,
+            vx: (Math.random() - 0.5) * 0.02,
+            vy: (Math.random() - 0.5) * 0.02,
+            vz: (Math.random() - 0.5) * 0.02,
+            decay: 0.025
+        });
+    }
+
+    function spawnHeavySmoke(pos) {
+        const pGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        const pMat = new THREE.MeshBasicMaterial({ color: 0x1f2937, transparent: true, opacity: 0.9 });
+        const pMesh = new THREE.Mesh(pGeo, pMat);
+        pMesh.position.copy(pos).add(new THREE.Vector3((Math.random() - 0.5) * 0.8, -0.2, -0.5));
+        scene.add(pMesh);
+        particles.push({
+            mesh: pMesh,
+            vx: (Math.random() - 0.5) * 0.05,
+            vy: 0.05 + Math.random() * 0.05,
+            vz: (Math.random() - 0.5) * 0.05,
+            decay: 0.015
+        });
+    }
+
+    function fireGuidedMissile() {
+        if (fireCooldown > 0 || flight.isCrashing) return;
+        
+        fireCooldown = selectedJetType === 'f22' ? 3 : selectedJetType === 'a10' ? 4 : 5;
+
+        audio.playMissileLaunch();
+        window.localBulletFiredTimestamp = Date.now();
+
+        for (let side = -1; side <= 1; side += 2) {
+            const mGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.4, 6);
+            const mMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+            const mMesh = new THREE.Mesh(mGeo, mMat);
+            mMesh.rotation.x = Math.PI / 2;
+
+            const finGeo = new THREE.BoxGeometry(0.4, 0.02, 0.15);
+            const finMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+            
+            const finsBack = new THREE.Mesh(finGeo, finMat);
+            finsBack.position.set(0, 0, -0.45);
+            mMesh.add(finsBack);
+
+            const finsFront = new THREE.Mesh(finGeo, finMat);
+            finsFront.position.set(0, 0, 0.35);
+            mMesh.add(finsFront);
+
+            const offset = new THREE.Vector3(side * 1.5, -0.1, 0.2).applyMatrix4(playerJet.matrixWorld);
+            mMesh.position.copy(offset);
+            scene.add(mMesh);
+
+            bullets.push({
+                mesh: mMesh,
+                vx: Math.sin(flight.yaw) * 0.8,
+                vy: Math.sin(flight.pitch) * 0.8,
+                vz: Math.cos(flight.yaw) * 0.8,
+                target: isTrackingEnabled ? findNearestEnemy(mMesh.position) : null,
+                isEnemyBullet: false
+            });
+        }
+    }
+
+    function fireRemotePlayerMissile(remoteMesh, jetType) {
+        audio.playMissileLaunch();
+
+        for (let side = -1; side <= 1; side += 2) {
+            const mGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.4, 6);
+            const mMat = new THREE.MeshLambertMaterial({ color: 0x00ff66 }); 
+            const mMesh = new THREE.Mesh(mGeo, mMat);
+            mMesh.rotation.x = Math.PI / 2;
+
+            const offset = new THREE.Vector3(side * 1.5, -0.1, 0.2).applyMatrix4(remoteMesh.matrixWorld);
+            mMesh.position.copy(offset);
+            scene.add(mMesh);
+
+            const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(remoteMesh.quaternion).normalize();
+
+            bullets.push({
+                mesh: mMesh,
+                vx: dir.x * 0.8,
+                vy: dir.y * 0.8,
+                vz: dir.z * 0.8,
+                target: findNearestEnemy(mMesh.position),
+                isEnemyBullet: false
+            });
+        }
+    }
+
+    function findNearestEnemy(pos) {
+        let nearest = null;
+        let minDist = Infinity;
+        enemies.forEach(e => {
+            const d = pos.distanceTo(e.mesh.position);
+            if (d < minDist) {
+                minDist = d;
+                nearest = e;
+            }
+        });
+        return nearest;
+    }
+
+    function handleEnemySpawning() {
+        spawnTimer++;
+        if (spawnTimer > 150) { 
+            spawnTimer = 0;
+            const isLeft = Math.random() > 0.5;
+            const startX = (Math.random() - 0.5) * 600;
+            const startZ = (Math.random() - 0.5) * 600;
+
+            const spawnHelo = Math.random() > 0.6; 
+
+            if (spawnHelo) {
+                const heloMesh = buildEnemyHelicopterMesh();
+                heloMesh.position.set(startX, 15 + Math.random() * 10, startZ);
+                scene.add(heloMesh);
+                enemies.push({
+                    mesh: heloMesh,
+                    isHelo: true,
+                    targetTower: isLeft ? towerLeft : towerRight,
+                    speed: 0.03 + Math.random() * 0.02,
+                    cooldown: 0,
+                    isCrashing: false,
+                    fallSpeed: 0,
+                    rotSpeed: 0.05
+                });
+            } else {
+                const enemyMesh = buildEnemyAirlinerMesh();
+                enemyMesh.position.set(startX, 45, startZ);
+                scene.add(enemyMesh);
+                enemies.push({
+                    mesh: enemyMesh,
+                    isHelo: false,
+                    targetTower: isLeft ? towerLeft : towerRight,
+                    speed: 0.08 + Math.random() * 0.04,
+                    shakePhase: Math.random() * 100,
+                    isCrashing: false,
+                    fallSpeed: 0,
+                    rotSpeed: 0.05
+                });
+            }
+        }
+    }
+
+    function triggerExplosion(pos) {
+        audio.playExplosion();
+        for (let i = 0; i < 25; i++) {
+            const pGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+            const pMat = new THREE.MeshBasicMaterial({
+                color: [0xff4500, 0xffd700, 0xef4444][Math.floor(Math.random() * 3)],
+                transparent: true,
+                opacity: 1.0
+            });
+            const pMesh = new THREE.Mesh(pGeo, pMat);
+            pMesh.position.copy(pos);
+            scene.add(pMesh);
+
+            const speed = Math.random() * 0.25 + 0.05;
+            const angle = Math.random() * Math.PI * 2;
+            particles.push({
+                mesh: pMesh,
+                vx: Math.cos(angle) * speed,
+                vy: (Math.random() - 0.5) * speed,
+                vz: Math.sin(angle) * speed,
+                decay: 0.025
+            });
+        }
+    }
+
+    function updateRemotePlayerState(pId, data) {
+        if (!scene) return;
+
+        if (!remotePlayers[pId]) {
+            const remoteJet = new THREE.Group();
+            buildSelectedPlayerJetMesh(remoteJet, data.jetType || 'f22');
+            scene.add(remoteJet);
+            remotePlayers[pId] = {
+                mesh: remoteJet,
+                jetType: data.jetType || 'f22',
+                lastActive: Date.now(),
+                lastBulletFired: 0
+            };
+        }
+
+        const rp = remotePlayers[pId];
+        rp.lastActive = Date.now();
+
+        if (rp.jetType !== data.jetType) {
+            rp.jetType = data.jetType;
+            buildSelectedPlayerJetMesh(rp.mesh, rp.jetType);
+        }
+
+        rp.mesh.position.set(data.x, data.y, data.z);
+        rp.mesh.rotation.set(0, 0, 0);
+        rp.mesh.rotateY(data.yaw || 0);
+        rp.mesh.rotateX(-(data.pitch || 0));
+        rp.mesh.rotateZ(data.roll || 0);
+
+        if (data.bulletFired && data.bulletFired > rp.lastBulletFired) {
+            rp.lastBulletFired = data.bulletFired;
+            fireRemotePlayerMissile(rp.mesh, rp.jetType);
+        }
+    }
+
+    function removeRemotePlayer(pId) {
+        if (remotePlayers[pId]) {
+            scene.remove(remotePlayers[pId].mesh);
+            delete remotePlayers[pId];
+        }
+    }
+</script>
+
+<!-- ==============================================
+     OYUN DÖNGÜSÜ VE GÖRSEL RE-RENDER MOTORU
+     ============================================== -->
+<script>
+    function goToMainMenu() {
+        gameActive = false;
+        isPaused = false;
+
+        // HUD ve Overlay katmanlarını gizle
+        document.getElementById('gameHud').classList.add('hidden');
+        document.getElementById('pauseOverlay').classList.add('hidden');
+        document.getElementById('gameOverOverlay').classList.add('hidden');
+
+        // Giriş ve Hangar ekranını doğrudan göster (Şifre çözmeyi atlar)
+        document.getElementById('hackerIntro').classList.remove('hidden');
+        document.getElementById('decryptionProgress').classList.add('hidden');
+        document.getElementById('hangarPanel').classList.remove('hidden');
+
+        // Motor ses seviyesini sıfırla
+        if (audio && audio.jetGain) {
+            audio.jetGain.gain.setValueAtTime(0.001, audio.ctx.currentTime);
+        }
+
+        // Sahnedeki kalıntı düşmanları ve mermileri temizle
+        if (scene) {
+            enemies.forEach(e => scene.remove(e.mesh));
+            bullets.forEach(b => scene.remove(b.mesh));
+            particles.forEach(p => scene.remove(p.mesh));
+        }
+        enemies = [];
+        bullets = [];
+        particles = [];
+
+        // Kule ve köprüleri eski haline getir
+        if (towerLeft) towerLeft.visible = true;
+        if (towerRight) towerRight.visible = true;
+        if (bridge) bridge.visible = true;
+        if (healthBlock) healthBlock.visible = true;
+
+        // Uçuş verilerini sıfırla
+        flight.x = 0;
+        flight.y = 8;
+        flight.z = 25;
+        flight.yaw = Math.PI;
+        flight.pitch = 0;
+        flight.roll = 0;
+        flight.isCrashing = false;
+        flight.speed = 0.28;
+    }
+
+    function update() {
+        if (!gameActive || isPaused) return;
+
+        const time = Date.now() * 0.001;
+        waterLakes.forEach((lake, index) => {
+            const posAttr = lake.geometry.attributes.position;
+            if (posAttr) {
+                for (let i = 0; i < posAttr.count; i++) {
+                    const x = posAttr.getX(i);
+                    const y = posAttr.getY(i);
+                    const z = Math.sin(x * 0.05 + time + index) * 0.15 + Math.cos(y * 0.05 + time) * 0.15;
+                    posAttr.setZ(i, z);
+                }
+                lake.geometry.computeVertexNormals();
+                posAttr.needsUpdate = true;
+            }
+        });
+
+        updateFlightPhysics();
+
+        const targetCenter = new THREE.Vector3(0, 14, 0); 
+        const distToTower = playerJet.position.distanceTo(targetCenter);
+        if (distToTower > 50) { 
+            guideArrow.visible = true;
+            const dirToTowers = new THREE.Vector3().subVectors(targetCenter, playerJet.position).normalize();
+            guideArrow.position.copy(playerJet.position).addScaledVector(dirToTowers, 6);
+            guideArrow.lookAt(targetCenter);
+        } else {
+            guideArrow.visible = false;
+        }
+
+        if (fireCooldown > 0) fireCooldown--;
+        if (keys.Space) {
+            fireGuidedMissile();
+        }
+
+        if (ciwsActive) {
+            [towerLeft, towerRight].forEach(tower => {
+                if (tower.visible && tower.userData.turret) {
+                    const turret = tower.userData.turret;
+                    const pivot = turret.getObjectByName("barrelPivot");
+                    const target = findNearestEnemy(turret.position);
+                    if (target && pivot) {
+                        pivot.lookAt(target.mesh.position);
+                        
+                        if (Math.random() < 0.22) { 
+                            const bGeo = new THREE.SphereGeometry(0.15, 4, 4);
+                            const bMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+                            const bullet = new THREE.Mesh(bGeo, bMat);
+                            bullet.position.copy(turret.position).add(new THREE.Vector3(0, 0.4, 0));
+                            scene.add(bullet);
+
+                            const dir = new THREE.Vector3().subVectors(target.mesh.position, bullet.position).normalize();
+                            bullets.push({
+                                mesh: bullet,
+                                vx: dir.x * 0.75, 
+                                vy: dir.y * 0.75,
+                                vz: dir.z * 0.75,
+                                target: null,
+                                isEnemyBullet: false
+                            });
+                        }
+                    }
+                }
+            });
+        }
+
+        groundUnits.forEach(unit => {
+            const target = findNearestEnemy(unit.mesh.position);
+            const radarPivot = unit.mesh.getObjectByName("radarPivot");
+            if (target && radarPivot) {
+                radarPivot.lookAt(target.mesh.position);
+                if (Math.random() < 0.05) {
+                    const bGeo = new THREE.SphereGeometry(0.2, 4, 4);
+                    const bMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+                    const bullet = new THREE.Mesh(bGeo, bMat);
+                    bullet.position.copy(unit.mesh.position).add(new THREE.Vector3(0, 1.2, 0));
+                    scene.add(bullet);
+
+                    const dir = new THREE.Vector3().subVectors(target.mesh.position, bullet.position).normalize();
+                    bullets.push({
+                        mesh: bullet,
+                        vx: dir.x * 0.8,
+                        vy: dir.y * 0.8,
+                        vz: dir.z * 0.8,
+                        target: null,
+                        isEnemyBullet: false
+                    });
+                }
+            }
+        });
+
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            const b = bullets[i];
+            
+            if (b.target && b.target.mesh && scene.getObjectById(b.target.mesh.id)) {
+                const targetDir = new THREE.Vector3().subVectors(b.target.mesh.position, b.mesh.position).normalize();
+                b.vx = THREE.MathUtils.lerp(b.vx, targetDir.x * 0.8, 0.45);
+                b.vy = THREE.MathUtils.lerp(b.vy, targetDir.y * 0.8, 0.45);
+                b.vz = THREE.MathUtils.lerp(b.vz, targetDir.z * 0.8, 0.45);
+            }
+
+            b.mesh.position.x += b.vx;
+            b.mesh.position.y += b.vy;
+            b.mesh.position.z += b.vz;
+
+            if (b.isEnemyBullet && !flight.isCrashing) {
+                const distToPlayer = b.mesh.position.distanceTo(playerJet.position);
+                if (distToPlayer < 2.0) {
+                    scene.remove(b.mesh);
+                    bullets.splice(i, 1);
+                    flight.isCrashing = true; 
+                    audio.playExplosion();
+                    continue;
+                }
+            }
+
+            if (b.mesh.position.y > 500 || b.mesh.position.y < -20 || Math.abs(b.mesh.position.x) > 1500) {
+                scene.remove(b.mesh);
+                bullets.splice(i, 1);
+            }
+        }
+
+        handleEnemySpawning();
+
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            const e = enemies[i];
+            
+            if (e.isCrashing) {
+                e.fallSpeed += 0.005;
+                e.mesh.position.y -= e.fallSpeed;
+                e.mesh.rotation.y += e.rotSpeed;
+                e.mesh.rotation.x += 0.02;
+
+                if (Math.random() < 0.6) {
+                    spawnHeavySmoke(e.mesh.position);
+                }
+
+                if (e.mesh.position.y <= -11.0) {
+                    triggerExplosion(e.mesh.position);
+                    scene.remove(e.mesh);
+                    enemies.splice(i, 1);
+                }
+                continue;
+            }
+
+            if (e.isHelo) {
+                const blades = e.mesh.getObjectByName("rotorBlades");
+                if (blades) blades.rotation.y += 0.4;
+
+                if (Math.random() < 0.02) {
+                    const bGeo = new THREE.SphereGeometry(0.15, 4, 4);
+                    const bMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+                    const bullet = new THREE.Mesh(bGeo, bMat);
+                    bullet.position.copy(e.mesh.position);
+                    scene.add(bullet);
+
+                    const dir = new THREE.Vector3().subVectors(playerJet.position, bullet.position).normalize();
+                    bullets.push({
+                        mesh: bullet,
+                        vx: dir.x * 0.5,
+                        vy: dir.y * 0.5,
+                        vz: dir.z * 0.5,
+                        target: null,
+                        isEnemyBullet: true
+                    });
+                }
+            }
+
+            const towerPos = e.targetTower.position;
+            const dir = new THREE.Vector3().subVectors(towerPos, e.mesh.position).normalize();
+            
+            e.mesh.position.x += dir.x * e.speed;
+            e.mesh.position.y += dir.y * e.speed;
+            e.mesh.position.z += dir.z * e.speed;
+
+            e.mesh.lookAt(towerPos);
+
+            const distToTower = e.mesh.position.distanceTo(towerPos);
+            if (distToTower < 5.0) {
+                if (e.targetTower === towerLeft) {
+                    towerLeft.visible = false;
+                    document.getElementById('jackState').innerText = '0% - YIKILDI';
+                    triggerExplosion(towerLeft.position);
+                    triggerGameOver("Sol kuleye kontrolsüz hava aracı çarptı ve kule yerle bir oldu!");
+                    if (window.updateCloudGameState) window.updateCloudGameState({ jackState: '0% - YIKILDI' });
+                } else {
+                    towerRight.visible = false;
+                    document.getElementById('roseState').innerText = '0% - YIKILDI';
+                    triggerExplosion(towerRight.position);
+                    triggerGameOver("Sağ kuleye kontrolsüz hava aracı çarptı ve kule yerle bir oldu!");
+                    if (window.updateCloudGameState) window.updateCloudGameState({ roseState: '0% - YIKILDI' });
+                }
+                scene.remove(e.mesh);
+                enemies.splice(i, 1);
+                break;
+            }
+
+            const distToBridge = e.mesh.position.distanceTo(bridge.position);
+            if (distToBridge < 4.0) {
+                bridgeHealth = Math.max(0, bridgeHealth - 50);
+                document.getElementById('bridgeHealthState').innerText = bridgeHealth + '%';
+                triggerExplosion(bridge.position);
+                scene.remove(e.mesh);
+                enemies.splice(i, 1);
+
+                if (window.updateCloudGameState) window.updateCloudGameState({ bridgeHealth: bridgeHealth });
+
+                if (bridgeHealth <= 0) {
+                    bridge.visible = false;
+                    healthBlock.visible = false;
+                    triggerGameOver("Bağlantı köprüsü ve tıbbi merkez imha edildi!");
+                }
+                break;
+            }
+
+            let isHit = false;
+            for (let j = bullets.length - 1; j >= 0; j--) {
+                const b = bullets[j];
+                if (b.isEnemyBullet) continue; 
+                const distToBullet = b.mesh.position.distanceTo(e.mesh.position);
+                
+                if (distToBullet < 4.5) {
+                    triggerExplosion(e.mesh.position);
+                    scene.remove(b.mesh);
+                    bullets.splice(j, 1);
+
+                    e.isCrashing = true; 
+                    e.fallSpeed = 0.05;
+                    e.rotSpeed = (Math.random() - 0.5) * 0.1;
+
+                    kills++;
+                    score += 150;
+                    document.getElementById('scoreVal').innerText = String(score).padStart(5, '0');
+                    isHit = true;
+
+                    if (window.updateCloudGameState) {
+                        window.updateCloudGameState({ score: score, kills: kills });
+                    }
+                    break;
+                }
+            }
+
+            if (isHit) continue;
+        }
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.mesh.position.x += p.vx;
+            p.mesh.position.y += p.vy;
+            p.mesh.position.z += p.vz;
+            p.mesh.material.opacity -= p.decay;
+
+            if (p.mesh.material.opacity <= 0) {
+                scene.remove(p.mesh);
+                particles.splice(i, 1);
+            }
+        }
+
+        drawRadarHUD();
+        drawAltimeterHUD();
+    }
+
+    function drawRadarHUD() {
+        const canvas = document.getElementById('radarCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 80, 80);
+
+        ctx.fillStyle = 'rgba(0, 20, 0, 0.8)';
+        ctx.beginPath();
+        ctx.arc(40, 40, 38, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#00ff66';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        const time = Date.now() * 0.003;
+        ctx.strokeStyle = 'rgba(0, 255, 102, 0.4)';
+        ctx.beginPath();
+        ctx.moveTo(40, 40);
+        ctx.lineTo(40 + Math.cos(time) * 38, 40 + Math.sin(time) * 38);
+        ctx.stroke();
+
+        ctx.fillStyle = '#3b82f6';
+        ctx.beginPath();
+        ctx.arc(40, 40, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (window.remotePlayers) {
+            Object.keys(window.remotePlayers).forEach(pId => {
+                const rp = window.remotePlayers[pId];
+                const dx = (rp.mesh.position.x - flight.x) * 0.1;
+                const dz = (rp.mesh.position.z - flight.z) * 0.1;
+                const rx = 40 + dx;
+                const ry = 40 + dz;
+                if (Math.hypot(dx, dz) < 36) {
+                    ctx.fillStyle = '#00ff66';
+                    ctx.beginPath();
+                    ctx.arc(rx, ry, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+        }
+
+        enemies.forEach(e => {
+            const dx = (e.mesh.position.x - flight.x) * 0.1;
+            const dz = (e.mesh.position.z - flight.z) * 0.1;
+            const rx = 40 + dx;
+            const ry = 40 + dz;
+            if (Math.hypot(dx, dz) < 36) {
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(rx, ry, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+    }
+
+    function drawAltimeterHUD() {
+        const canvas = document.getElementById('altimeterCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 70, 70);
+
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.arc(35, 35, 32, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#00ff66';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        const altRatio = ((flight.y + 11) / 100) * Math.PI * 2;
+        ctx.strokeStyle = '#00ff66';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(35, 35);
+        ctx.lineTo(35 + Math.sin(altRatio) * 25, 35 - Math.cos(altRatio) * 25);
+        ctx.stroke();
+    }
+
+    function draw() {
+        if (!gameActive) return;
+
+        if (cameraMode === 'MISSILE' && bullets.length > 0) {
+            const activeMissile = bullets[0].mesh;
+            const relativeOffset = new THREE.Vector3(0, 0.8, -3.2);
+            const targetPos = relativeOffset.applyMatrix4(activeMissile.matrixWorld);
+            
+            camera.position.lerp(targetPos, 0.25);
+            camera.lookAt(activeMissile.position);
+        } else if (cameraMode === 'PLANE_TOP') {
+            const backPos = new THREE.Vector3(0, 16, -1).applyMatrix4(playerJet.matrixWorld);
+            camera.position.lerp(backPos, 0.15);
+            camera.lookAt(playerJet.position);
+        } else if (cameraMode === 'CHASE') {
+            const backPos = new THREE.Vector3(0, 2.5, -9).applyMatrix4(playerJet.matrixWorld);
+            camera.position.lerp(backPos, 0.2);
+            camera.lookAt(playerJet.position.clone().add(new THREE.Vector3(0, 1, 0)));
+        } else if (cameraMode === 'ORBIT') {
+            const radius = 25;
+            camera.position.x = playerJet.position.x + radius * Math.cos(orbitAngleX) * Math.cos(orbitAngleY);
+            camera.position.y = playerJet.position.y + radius * Math.sin(orbitAngleY) + 2;
+            camera.position.z = playerJet.position.z + radius * Math.sin(orbitAngleX) * Math.cos(orbitAngleY);
+            camera.lookAt(playerJet.position);
+        } else {
+            camera.position.set(0, 65, 45);
+            camera.lookAt(new THREE.Vector3(0, 14, 0));
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    function animate() {
+        if (!gameActive) return;
+        requestAnimationFrame(animate);
+        update();
+        draw();
+    }
+
+    function triggerGameOver(reason) {
+        gameActive = false;
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('ttd_highScore', highScore);
+            document.getElementById('highScoreVal').innerText = String(highScore).padStart(5, '0');
+        }
+        document.getElementById('finalKills').innerText = kills;
+        document.getElementById('finalScore').innerText = score;
+        document.getElementById('failReason').innerText = reason;
+        document.getElementById('gameOverOverlay').classList.remove('hidden');
+    }
+
+    function restartGame() {
+        score = 0;
+        kills = 0;
+        bridgeHealth = 100;
+        document.getElementById('scoreVal').innerText = "00000";
+        document.getElementById('jackState').innerText = "100%";
+        document.getElementById('roseState').innerText = "100%";
+        document.getElementById('bridgeHealthState').innerText = "100%";
+        document.getElementById('gameOverOverlay').classList.add('hidden');
+
+        enemies.forEach(e => scene.remove(e.mesh));
+        bullets.forEach(b => scene.remove(b.mesh));
+        particles.forEach(p => scene.remove(p.mesh));
+        enemies = [];
+        bullets = [];
+        particles = [];
+
+        towerLeft.visible = true;
+        towerRight.visible = true;
+        bridge.visible = true;
+        healthBlock.visible = true;
+
+        flight.x = 0;
+        flight.y = 8;
+        flight.z = 25;
+        flight.yaw = Math.PI;
+        flight.pitch = 0;
+        flight.roll = 0;
+        flight.isCrashing = false;
+        flight.speed = 0.28;
+
+        if (window.updateCloudGameState) {
+            window.updateCloudGameState({
+                score: 0,
+                kills: 0,
+                bridgeHealth: 100,
+                jackState: "100%",
+                roseState: "100%"
+            });
+        }
+
+        gameActive = true;
+        animate();
+    }
+</script>
+
+<!-- ==============================================
+     DOKUNMATİK ANALOG JOYSTICK & EVENT SİSTEMLERİ (HER ZAMAN KULLANIMA HAZIR)
+     ============================================== -->
+<script>
+    function initVirtualJoystick() {
+        const container = document.getElementById('joystickContainer');
+        const knob = document.getElementById('joystickKnob');
+        const fireBtn = document.getElementById('btnMobileFire');
+        if (!container || !knob) return;
+
+        let activeTouchId = null;
+        let rect = container.getBoundingClientRect();
+        let maxRadius = rect.width / 2 - 10;
+
+        window.addEventListener('resize', () => {
+            rect = container.getBoundingClientRect();
+            maxRadius = rect.width / 2 - 10;
+        });
+
+        function handleMove(clientX, clientY) {
+            const containerRect = container.getBoundingClientRect();
+            const centerX = containerRect.left + containerRect.width / 2;
+            const centerY = containerRect.top + containerRect.height / 2;
+
+            let dx = clientX - centerX;
+            let dy = clientY - centerY;
+            const distance = Math.hypot(dx, dy);
+
+            if (distance > maxRadius) {
+                dx = (dx / distance) * maxRadius;
+                dy = (dy / distance) * maxRadius;
+            }
+
+            knob.style.transform = `translate(${dx}px, ${dy}px)`;
+
+            joystickX = dx / maxRadius;
+            joystickY = -dy / maxRadius;
+        }
+
+        function handleStart(clientX, clientY, identifier) {
+            activeTouchId = identifier;
+            handleMove(clientX, clientY);
+        }
+
+        function handleEnd() {
+            activeTouchId = null;
+            knob.style.transform = `translate(0px, 0px)`;
+            joystickX = 0;
+            joystickY = 0;
+        }
+
+        container.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            handleStart(touch.clientX, touch.clientY, touch.identifier);
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            if (activeTouchId === null) return;
+            for (let i = 0; i < e.touches.length; i++) {
+                if (e.touches[i].identifier === activeTouchId) {
+                    handleMove(e.touches[i].clientX, e.touches[i].clientY);
+                    break;
+                }
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', (e) => {
+            if (activeTouchId === null) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === activeTouchId) {
+                    handleEnd();
+                    break;
+                }
+            }
+        });
+
+        let isJoystickMouseDown = false;
+        container.addEventListener('mousedown', (e) => {
+            isJoystickMouseDown = true;
+            handleStart(e.clientX, e.clientY, 'mouse');
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!isJoystickMouseDown) return;
+            handleMove(e.clientX, e.clientY);
+        });
+        window.addEventListener('mouseup', () => {
+            if (isJoystickMouseDown) {
+                isJoystickMouseDown = false;
+                handleEnd();
+            }
+        });
+
+        if (fireBtn) {
+            fireBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys.Space = true;
+            }, { passive: false });
+
+            fireBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys.Space = false;
+            });
+
+            fireBtn.addEventListener('mousedown', () => { keys.Space = true; });
+            fireBtn.addEventListener('mouseup', () => { keys.Space = false; });
+        }
+    }
+</script>
+
+<script>
+    window.addEventListener('keydown', e => {
+        if (e.code in keys) keys[e.code] = true;
+        if (e.code === 'Space') keys.Space = true;
+        if (e.key === 'p' || e.key === 'P') togglePause();
+        if (e.key === 'm' || e.key === 'M') goToMainMenu(); // M ile menüye dön
+        
+        if (e.key === 'r' || e.key === 'R') {
+            toggleAutopilot(); // Değişkeni çift tetiklememek için doğrudan fonksiyonu çağırıyoruz
+        }
+        if (e.key === 'g' || e.key === 'G') {
+            toggleGuidance();
+        }
+    });
+
+    window.addEventListener('keyup', e => {
+        if (e.code in keys) keys[e.code] = false;
+        if (e.code === 'Space') keys.Space = false;
+    });
+
+    window.addEventListener('mousedown', e => {
+        if (!gameActive || isPaused) return;
+        if (document.getElementById('mobileControls').contains(e.target)) return;
+        isDragging = true;
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+    });
+
+    window.addEventListener('mousemove', e => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - prevMouseX;
+        const deltaY = e.clientY - prevMouseY;
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+
+        orbitAngleX -= deltaX * 0.008;
+        orbitAngleY = Math.max(-0.5, Math.min(1.2, orbitAngleY - deltaY * 0.008));
+    });
+
+    window.addEventListener('mouseup', e => {
+        isDragging = false;
+    });
+
+    window.addEventListener('click', e => {
+        if (!gameActive || isPaused) return;
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || document.getElementById('hackerIntro').contains(e.target)) return;
+        if (document.getElementById('mobileControls').contains(e.target)) return;
+        fireGuidedMissile();
+    });
+
+    window.addEventListener('resize', () => {
+        if (!renderer) return;
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    window.onload = function() {
+        initDecryption();
+    };
+</script>
+</body>
+</html>
